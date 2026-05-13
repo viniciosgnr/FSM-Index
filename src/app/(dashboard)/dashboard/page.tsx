@@ -1,7 +1,8 @@
 import { Panel1Fleet } from "@/components/features/dashboard/panel1-fleet";
 import { Panel2Fpso } from "@/components/features/dashboard/panel2-fpso";
 import { PtciHeatmap } from "@/components/features/dashboard/ptci-heatmap";
-import { fleetData, fpsoData, MONTHS } from "@/lib/mock-data";
+import { MONTHS } from "@/lib/mock-data";
+import { getFleetSnapshots, getFpsoSnapshots } from "@/lib/api";
 import { Info, TrendingDown, TrendingUp, Minus, RefreshCw, ShieldCheck } from "lucide-react";
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
@@ -62,10 +63,13 @@ function KpiCard({
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const fleetData = await getFleetSnapshots();
+  const fpsoData = await getFpsoSnapshots();
+
   const recent = fleetData.slice(-3);
-  const avgPtci = recent.reduce((s, r) => s + r.ptci, 0) / recent.length;
-  const avgMci  = recent.reduce((s, r) => s + r.mci,  0) / recent.length;
+  const avgPtci = recent.length > 0 ? recent.reduce((s, r) => s + r.ptci, 0) / recent.length : 0;
+  const avgMci  = recent.length > 0 ? recent.reduce((s, r) => s + r.mci,  0) / recent.length : 0;
   const totalOverdue = fleetData.reduce((s, r) => s + r.overdue, 0);
   const totalFaa     = fleetData.reduce((s, r) => s + r.faa,     0);
 
@@ -203,7 +207,9 @@ export default function DashboardPage() {
               Quickly identify critical FPSOs and months · hover a cell to focus
             </span>
           </div>
-          <PtciHeatmap />
+          <section className="space-y-4">
+            <PtciHeatmap fpsoData={fpsoData} fleetData={fleetData} />
+          </section>
         </section>
 
 

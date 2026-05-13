@@ -17,22 +17,38 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 1. Project Overview
 
-The **FSM Index** is an internal web application built for SBM Offshore's Change Management and Maintenance team. Its goal is to **collect SIF (Safety Instrumented Function) work order data from the IFS maintenance system**, process it, and **generate a visual FSM Index dashboard** with KPIs that support decision-making for functional safety compliance monitoring.
+The **FSM Index** provides a consolidated view of the key elements that ensure the integrity, reliability, and governance of Safety Instrumented Functions (SIFs) throughout their lifecycle. It is an internal web application built for SBM Offshore's Change Management and Maintenance team that **collects SIF work order data from the IFS maintenance system**, processes it, and **generates a visual FSM Index dashboard** with KPIs supporting decision-making for functional safety compliance monitoring.
 
-### 1.1 Problem Statement
+> 📄 **Source spec**: [`docs/specs/FSM-Index-03-02-26.md`](./docs/specs/FSM-Index-03-02-26.md) — converted from the official team document (FSM Index 03-02-26.docx).
+
+### 1.1 FSM Index — Four Core Components
+
+The FSM Index is a **composite index** of four pillars. Phase 1 implements pillar #1; the remaining pillars are roadmapped for later phases.
+
+| # | Component | Phase | Description |
+|---|-----------|-------|-------------|
+| 1 | **SIF Proof Test Index** | ✅ Phase 1 | PTCI + MCI + FAA — evaluates execution and effectiveness of periodic SIF proof testing |
+| 2 | **Training Matrix Adherence Index** | 🔲 Phase 2+ | Measures personnel competency against mandated training requirements |
+| 3 | **SIF Design Index (SDQI)** | 🔲 Phase 2+ | Tracks deviations between installed configuration and original SIF design assumptions |
+| 4 | **SIF Studies Index** | 🔲 Phase 2+ | Centralises all engineering analyses, assessments, and SIF lifecycle documentation |
+
+> **Threats Index** — A supplementary indicator that does _not_ impact the FSM Index score. Serves as predictive information for early detection of potential issues. Based on scenario-change analyses from HAZOP reviews that may lead to SIF design modifications. Reports the number of scenarios under evaluation; can impact the SIF Design Index and SIF Studies Index.
+
+### 1.2 Problem Statement
 
 SBM Offshore's SIF proof tests are tracked manually via IFS, but there is no consolidated, real-time view of compliance performance across the fleet. The FSM Index automates this consolidation, enabling the team to monitor test execution compliance (PTCI) and mitigation quality (MCI) monthly, with full audit traceability.
 
-### 1.2 Core Objectives
+### 1.3 Core Objectives
 
 - Integrate with **IFS** to collect SIF Work Order data
-- Calculate the **PTCI** and **MCI** indices using business rules defined below
+- Calculate the **PTCI**, **MCI**, and future **SDQI** indices using business rules defined below
 - Present results in a **monthly, interactive dashboard** per region/vessel
 - Track trends over time with historical snapshots
 - Support the Change Management team's operational and audit needs
+- Support **IEC 61511 Clause 11.9** compliance monitoring (systematic proof test execution, documentation, and verification)
 - Lay groundwork for future **AI/ML integration** (LangGraph, LangChain)
 
-### 1.3 Target Users
+### 1.4 Target Users
 
 | Role | Description |
 |------|-------------|
@@ -313,20 +329,52 @@ The FSM Index follows **Clean Architecture** with **SOLID principles**, organize
 - Next.js calls it via `PYTHON_BACKEND_URL` env var (server-side only)
 - Local dev: `docker compose up backend`
 
-### 3.4 Clean Architecture Rules for Agents
+### 3.4 Clean Architecture + SOLID — Permanent Development Law
 
-> ⚠️ **Mandatory**: All agents must follow these rules when writing code.
+> 🚨 **THIS IS A PERMANENT, NON-NEGOTIABLE RULE FOR ALL AGENTS AND ALL LAYERS (Python + TypeScript).**
+> Any code that violates these rules must be refactored before merging. No exceptions.
 
-1. **Domain layer has zero dependencies** — no framework imports, no Supabase, no HTTP
-2. **Use Cases orchestrate, never contain** infrastructure logic
-3. **Repositories are interfaces** defined in the domain, implemented in infrastructure
-4. **DTOs** are used at layer boundaries — never pass raw DB rows to the UI
-5. **SOLID principles**:
-   - **S** — Each class/function has one reason to change
-   - **O** — Open for extension, closed for modification (use interfaces)
-   - **L** — Subtypes must be substitutable for their base types
-   - **I** — No client should depend on interfaces it doesn't use
-   - **D** — Depend on abstractions, not concretions
+#### Layer Dependency Rule (Clean Architecture)
+```
+Domain ← Application ← Infrastructure
+Domain ← Application ← Presentation (API / UI)
+```
+- Inner layers **never import** from outer layers
+- All cross-layer communication goes through **interfaces (ABCs / TypeScript interfaces)**
+
+#### Mandatory Rules
+
+| # | Rule | Applies To |
+|---|------|-----------|
+| 1 | **Domain layer has ZERO external dependencies** | Python + TS |
+| 2 | **Use Cases orchestrate; never contain infrastructure logic** | Python + TS |
+| 3 | **Repositories are abstract interfaces defined in Domain, implemented in Infrastructure** | Python + TS |
+| 4 | **DTOs at every layer boundary** — raw DB rows never reach the UI or domain | Python + TS |
+| 5 | **No hard-coded SQL or HTTP calls in Domain or Application layers** | Python + TS |
+| 6 | **Supabase client lives ONLY in the Infrastructure layer** | Python + TS |
+| 7 | **FastAPI/Next.js framework code lives ONLY in the Presentation layer** | Python + TS |
+
+#### SOLID Checklist (apply to every class/module written)
+- **S** — Single Responsibility: one reason to change per class/function
+- **O** — Open/Closed: extend via new classes, never modify existing ones
+- **L** — Liskov Substitution: concrete repos must be drop-in replacements for their ABCs
+- **I** — Interface Segregation: small focused interfaces, not monolithic ones
+- **D** — Dependency Inversion: depend on abstractions, inject concretions at startup
+
+#### Python-specific rules
+- Use `abc.ABC` + `@abstractmethod` for all repository interfaces
+- Use `@dataclass(frozen=True)` for all domain entities and value objects
+- Use FastAPI `Depends()` for dependency injection — never instantiate repos inside use cases
+- All Supabase/DB code goes in `infrastructure/repositories/`
+
+#### TypeScript-specific rules
+- Use `interface` (not `type`) for all repository and use-case contracts
+- Server Components fetch data; Client Components only handle interaction
+- Next.js API routes (`/api/`) are the only place that calls the Python backend
+- Never call the Python backend from a Client Component (`"use client"`)
+
+#### File that encodes this rule
+> 📄 This section is the source of truth. If any code in the repo contradicts it, the code is wrong — fix the code, not this rule.
 
 ### 3.5 Domain Entities (Planned)
 
@@ -583,23 +631,158 @@ def compute_mci(snapshot: MonthlySnapshot) -> float:
 
 ---
 
-## 10. Glossary
+## 10. Future Components — Detailed Specifications
+
+> ⚠️ This section documents the future pillars of the FSM Index as received from the business team. Implementation is roadmapped for Phase 2+. Agents must **not** implement these before Phase 1 is complete and approved.
+>
+> 📄 Full source: [`docs/specs/FSM-Index-03-02-26.md`](./docs/specs/FSM-Index-03-02-26.md)
+
+### 10.1 Training Matrix Adherence Index
+
+**Objective**: Evaluate personnel adherence to the mandatory Training Matrix, ensuring all critical competencies, certifications, and qualifications are up to date for safe operations.
+
+**Inputs**:
+- List of personnel subject to the Training Matrix
+- Valid certificates issued per employee
+- Mandatory training per function, discipline, and criticality
+- Training validity dates and frequency
+- Official completion records in the corporate system
+
+**Actions**:
+- Identify gaps in training completion per category
+- Notify personnel and supervisors about upcoming or overdue training
+- Coordinate scheduling with training providers
+- Ensure certificates are uploaded and validated in the corporate system
+- Monitor expiring certifications and trigger renewal workflows
+- Review Training Matrix periodically to reflect organisational or regulatory changes
+
+---
+
+### 10.2 SIF Design Index (SDQI%)
+
+**Context**: Monitors any deviation between the installed system and the original design assumptions, ensuring continuous alignment with SIF requirements.
+
+**Examples of monitored deviations**:
+- Differences between as-built logic and original Cause & Effect matrix (altered trip setpoints, missing interlocks)
+- Field devices installed with specs not matching approved datasheet (different SIL rating, response time, fail-safe action)
+- Wiring/loop configuration deviations (e.g., 2oo3 incorrectly wired as 1oo2)
+- Unapproved control system logic modifications during maintenance
+- Component replacement with different models/firmware affecting reliability or response time
+- Changes in process conditions exceeding the LOPA/SIL verification design envelope
+- HAZOP revalidation changes requiring SIF redesign or additional safeguards
+- GTS Deviations (adjustments in engineering specifications or corporate standards)
+
+**Inputs**: GAP Analysis · Audit · QnA with SIF scenario changes
+
+#### SDQI Calculation
+
+Each SIF is assessed through a weighted checklist against its Safety Requirement Specification (SRS):
+
+| Criterion | Description |
+|-----------|-------------|
+| Loop architecture | Correct voting logic and architecture |
+| Integrity level of components | Components meet required SIL |
+| Installed Partial Stroke Test | PST installed where required |
+| Proof test frequency in CMMS | Correct OLF configured in IFS |
+| SIFs correctly registered in CMMS | WO registration is correct |
+| Plans correctly registered | Maintenance plans linked |
+| Acceptance criteria | Test acceptance criteria documented |
+
+**SIL Weighting factor (wᵢ)**:
+
+| SIL Level | Weight |
+|-----------|--------|
+| SIL 1 | 1.0 |
+| SIL 2 | 1.5 |
+| SIL 3 | 2.0 |
+
+**Criterion Score (Iᵢ)**: `1` = compliant · `0` = non-compliant
+
+> Ongoing assessments (HAZOP reviews, GTS alerts) are reported under the **Threats Index**, not the SDQI directly.
+
+---
+
+### 10.3 SIF Studies Index
+
+**Purpose**: Central repository for all documents, evaluations, and engineering analyses related to SIF lifecycle (integrity, design assumptions, operational performance, deviations).
+
+**Inputs**: GAP Analysis · Audit
+
+**Key Documents tracked**:
+
+| Document | Description |
+|----------|-------------|
+| SRS | Safety Requirement Specification |
+| SIL Verification | PFD/PFH calculations |
+| Functional Safety Plan | Lifecycle management plan |
+| Training Matrix | Competency requirements |
+
+**Document Status Metric** (per document):
+
+| Status | Score |
+|--------|-------|
+| Does not exist | 0% |
+| Exists but outdated | 50% |
+| Minor updates pending | 75% |
+| Up to date | 100% |
+
+---
+
+### 10.4 Threats Index
+
+A supplementary indicator that does **not** impact the FSM Index score. Serves as predictive information for early detection of potential issues.
+
+- Based on scenario-change analyses derived from **HAZOP reviews** that may lead to SIF design modifications
+- Reports the **number of scenarios under evaluation**
+- Can impact: SIF Design Index and SIF Studies Index
+- Will be integrated as a dashboard widget/panel showing open threat scenarios and their current evaluation status
+
+---
+
+### 10.5 Standards & References
+
+| Standard / Term | Description |
+|----------------|-------------|
+| **IEC 61511** | Functional Safety: SIS for the Process Industry Sector |
+| **IEC 61511 Clause 11.9** | Systematic proof test execution, documentation, and verification requirement |
+| **ALARP** | As Low As Reasonably Practicable — risk level target for all SIF activities |
+| **ORA** | Operational Risk Assessment — required when mitigations or FAAs affect SIF availability |
+| **RCA** | Root Cause Analysis — minimum: 5 Whys; escalate to TapRoot when necessary |
+| **LOPA** | Layers of Protection Analysis — basis for SIL determination |
+| **GTS Deviation** | Global Technical Standard deviation — formal change to corporate engineering standards |
+| **SRS** | Safety Requirement Specification — defines SIF requirements per IEC 61511 |
+| **SDQI** | SIF Design Quality Index — composite score of checklist compliance weighted by SIL level |
+
+---
+
+## 11. Glossary
 
 | Term | Definition |
 |------|-----------|
-| **FSM Index** | Functional Safety Management Index — composite KPI system for SIF test monitoring |
+| **FSM Index** | Functional Safety Management Index — composite KPI system for SIF test monitoring, comprising 4 pillars: Proof Test, Training Matrix, SIF Design, SIF Studies |
 | **PTCI** | Proof Test Compliance Index — percentage of planned SIF tests actually executed |
 | **MCI** | Mitigation Compliance Index — percentage of unexecuted tests formally mitigated |
+| **SDQI** | SIF Design Quality Index — composite score of checklist compliance weighted by SIL level |
 | **IFS** | Industrial and Financial Systems — the ERP/maintenance system used by SBM Offshore |
 | **SIF** | Safety Instrumented Function — a safety-critical control loop requiring periodic proof testing |
 | **Work Order (WO)** | A maintenance task tracked in IFS, specifically a SIF proof test order |
 | **OLF** | Original Latest Finish — the original planned completion date of a WO in IFS |
 | **FAA** | Functional Failure Action — automatically opened in IFS when a proof test fails |
 | **CR** | Change Request — formal document allowing postponement of a SIF test |
-| **ORA** | Risk Analysis (Operational Risk Assessment) — formal document allowing postponement |
+| **ORA** | Operational Risk Assessment — formal document allowing postponement; also required when FAA affects SIF availability |
 | **Overdue** | A SIF test not executed by its OLF date and not formally mitigated |
 | **Mitigation** | A formally postponed SIF test, evidenced by `IS_POSTPONED=TRUE` or `LATEST_FINISH ≠ OLF` |
 | **Anticipated (Exec. antecipadas)** | A SIF test executed before its OLF month — informational, credited to the OLF month |
 | **Region** | An offshore operational region grouping assets/vessels managed by SBM |
 | **RLS** | Row Level Security — Supabase/Postgres policy controlling data access per user |
 | **BFF** | Backend-for-Frontend — a Next.js API layer that proxies to the Python backend |
+| **IEC 61511** | Functional Safety standard for SIS in the process industry; Clause 11.9 mandates systematic proof testing |
+| **ALARP** | As Low As Reasonably Practicable — target risk level for all SIF activities |
+| **RCA** | Root Cause Analysis — minimum: 5 Whys methodology; escalate to TapRoot when needed |
+| **LOPA** | Layers of Protection Analysis — risk assessment basis for SIL determination |
+| **SRS** | Safety Requirement Specification — defines SIF requirements per IEC 61511 |
+| **SIL** | Safety Integrity Level (1, 2, or 3) — defines the required risk reduction of a SIF |
+| **HAZOP** | Hazard and Operability Study — systematic risk identification methodology |
+| **GTS Deviation** | Global Technical Standard deviation — formal change to SBM corporate engineering standards |
+| **Threats Index** | Supplementary FSM indicator tracking HAZOP scenarios under evaluation; does not affect FSM score |
+| **PST** | Partial Stroke Test — partial test of a valve or actuator to verify functionality without full operation |

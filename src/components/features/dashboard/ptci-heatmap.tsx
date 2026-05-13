@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { fpsoData, fleetData, MONTHS } from "@/lib/mock-data";
+import type { FpsoUnit, MonthlyRow } from "@/lib/mock-data";
+import { MONTHS } from "@/lib/mock-data";
+
+type Props = {
+  fpsoData: FpsoUnit[];
+  fleetData: MonthlyRow[];
+};
 
 // ── Color helpers ────────────────────────────────────────────
 function cellBg(pct: number | null): string {
@@ -25,14 +31,6 @@ function cellBorder(pct: number | null): string {
   if (pct >= 95) return "1px solid #A8DFB8";
   if (pct >= 80) return "1px solid #F5D97A";
   return "1px solid #F5B3AE";
-}
-
-// FPSO average excluding nulls
-function fpsoAvg(unitIdx: number): number | null {
-  const months = fpsoData[unitIdx].months;
-  const valid = months.filter((m) => m.pctNoPrazo !== null);
-  if (valid.length === 0) return null;
-  return Math.round(valid.reduce((s, m) => s + m.pctNoPrazo!, 0) / valid.length);
 }
 
 // ── Single heat cell ─────────────────────────────────────────
@@ -109,8 +107,16 @@ function AvgBadge({ pct, large = false }: { pct: number | null; large?: boolean 
 }
 
 // ── Main component ───────────────────────────────────────────
-export function PtciHeatmap() {
+export function PtciHeatmap({ fpsoData, fleetData }: Props) {
   const [hovered, setHovered] = useState<{ row: number; col: number } | null>(null);
+
+  // FPSO average excluding nulls
+  function fpsoAvg(unitIdx: number): number | null {
+    const months = fpsoData[unitIdx].months;
+    const valid = months.filter((m: any) => m.pctNoPrazo !== null);
+    if (valid.length === 0) return null;
+    return Math.round(valid.reduce((s: number, m: any) => s + m.pctNoPrazo!, 0) / valid.length);
+  }
 
   // year group col spans
   const year25cols = MONTHS.filter((m) => m.includes("/25")).length; // 12
@@ -330,14 +336,13 @@ export function PtciHeatmap() {
               );
             })}
 
-            {/* ── Fleet PTCI row (from Panel 1 data) ─────────── */}
-            <tr>
-              <td className="px-3 pt-3 pb-1">
+            {/* ── Fleet PTCI row (Index) ─────────────────────────── */}
+            <tr className="bg-muted/10 border-t-2 border-sbm-navy/20">
+              <td className="px-3 py-3">
                 <span
-                  className="text-[0.65rem] font-bold uppercase tracking-wide"
-                  style={{ color: "#1B2A47" }}
+                  className="text-[0.65rem] font-bold uppercase tracking-wide text-sbm-navy"
                 >
-                  Fleet PTCI
+                  Fleet PTCI %
                 </span>
               </td>
               {fleetData.map((row, ci) => {
@@ -345,7 +350,7 @@ export function PtciHeatmap() {
                 return (
                   <td
                     key={ci}
-                    className="pt-3 pb-1 px-[3px] text-center"
+                    className="py-3 px-[3px] text-center"
                     style={{
                       borderLeft: isYearBoundary
                         ? "2px solid rgba(242,101,34,0.25)"
@@ -353,10 +358,10 @@ export function PtciHeatmap() {
                     }}
                   >
                     <div
-                      className="rounded-md flex items-center justify-center h-8"
+                      className="rounded-md flex items-center justify-center h-8 transition-transform hover:scale-105 shadow-sm"
                       style={{
                         backgroundColor: cellBg(row.ptci),
-                        border: cellBorder(row.ptci),
+                        border: `2px solid ${cellTextColor(row.ptci)}`,
                       }}
                     >
                       <span
@@ -369,11 +374,58 @@ export function PtciHeatmap() {
                   </td>
                 );
               })}
-              {/* Fleet overall avg */}
-              <td className="px-2 pt-3 pb-1 text-center">
+              <td className="px-2 py-3 text-center">
                 <AvgBadge
                   pct={Math.round(
                     fleetData.reduce((s, r) => s + r.ptci, 0) / fleetData.length
+                  )}
+                  large
+                />
+              </td>
+            </tr>
+
+            {/* ── Fleet MCI row (Index) ──────────────────────────── */}
+            <tr className="bg-muted/10 border-b border-border/50">
+              <td className="px-3 py-3">
+                <span
+                  className="text-[0.65rem] font-bold uppercase tracking-wide text-sbm-navy"
+                >
+                  Fleet MCI %
+                </span>
+              </td>
+              {fleetData.map((row, ci) => {
+                const isYearBoundary = MONTHS[ci] === "Jan/26";
+                return (
+                  <td
+                    key={ci}
+                    className="py-3 px-[3px] text-center"
+                    style={{
+                      borderLeft: isYearBoundary
+                        ? "2px solid rgba(242,101,34,0.25)"
+                        : undefined,
+                    }}
+                  >
+                    <div
+                      className="rounded-md flex items-center justify-center h-8 transition-transform hover:scale-105 shadow-sm"
+                      style={{
+                        backgroundColor: cellBg(row.mci),
+                        border: `2px solid ${cellTextColor(row.mci)}`,
+                      }}
+                    >
+                      <span
+                        className="text-xs font-bold tabular-nums"
+                        style={{ color: cellTextColor(row.mci) }}
+                      >
+                        {Math.round(row.mci)}%
+                      </span>
+                    </div>
+                  </td>
+                );
+              })}
+              <td className="px-2 py-3 text-center">
+                <AvgBadge
+                  pct={Math.round(
+                    fleetData.reduce((s, r) => s + r.mci, 0) / fleetData.length
                   )}
                   large
                 />

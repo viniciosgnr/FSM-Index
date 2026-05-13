@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import { fleetData, fpsoData, MONTHS } from "@/lib/mock-data";
+import type { MonthlyRow, FpsoUnit } from "@/lib/mock-data";
+import { MONTHS } from "@/lib/mock-data";
 
-export function CriticalMonths() {
+type Props = {
+  fleetData: MonthlyRow[];
+  fpsoData: FpsoUnit[];
+};
+
+export function CriticalMonths({ fleetData, fpsoData }: Props) {
   // Find months where PTCI is < 80%
   const criticalIndices = fleetData
     .map((data, index) => ({ data, index }))

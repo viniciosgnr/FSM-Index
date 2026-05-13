@@ -1,14 +1,16 @@
 import { FpsoGauges } from "@/components/features/dashboard/fpso-gauges";
 import { FpsoRanking } from "@/components/features/dashboard/fpso-ranking";
 import { CriticalMonths } from "@/components/features/dashboard/critical-months";
-import { fpsoData } from "@/lib/mock-data";
+import { getFpsoSnapshots, getFleetSnapshots } from "@/lib/api";
 import { RefreshCw, ShieldCheck } from "lucide-react";
 
 export const metadata = {
   title: "Analytics | FSM Index",
 };
 
-export default function AnalyticsPage() {
+export default async function AnalyticsPage() {
+  const fpsoData = await getFpsoSnapshots();
+  const fleetData = await getFleetSnapshots();
   return (
     <div className="flex flex-col min-h-screen">
       {/* ── Top bar ─────────────────────────────────────────── */}
@@ -55,7 +57,7 @@ export default function AnalyticsPage() {
               Drill-down into months below the 80% PTCI target
             </span>
           </div>
-          <CriticalMonths />
+          <CriticalMonths fleetData={fleetData} fpsoData={fpsoData} />
         </section>
 
         {/* ── FPSO Performance Overview ────────────────────────── */}
