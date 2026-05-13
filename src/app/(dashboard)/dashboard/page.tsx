@@ -70,6 +70,7 @@ export default async function DashboardPage() {
   const recent = fleetData.slice(-3);
   const avgPtci = recent.length > 0 ? recent.reduce((s, r) => s + r.ptci, 0) / recent.length : 0;
   const avgMci  = recent.length > 0 ? recent.reduce((s, r) => s + r.mci,  0) / recent.length : 0;
+  const avgFaai = recent.length > 0 ? recent.reduce((s, r) => s + r.faai, 0) / recent.length : 0;
   const totalOverdue = fleetData.reduce((s, r) => s + r.overdue, 0);
   const totalFaa     = fleetData.reduce((s, r) => s + r.faa,     0);
 
@@ -116,7 +117,7 @@ export default async function DashboardPage() {
 
       <div className="p-6 space-y-8">
         {/* ── KPI cards ──────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
             label="Avg PTCI (last 3 months)"
             value={`${Math.round(avgPtci)}%`}
@@ -134,6 +135,14 @@ export default async function DashboardPage() {
             icon={<ShieldCheck className="w-4 h-4" />}
           />
           <KpiCard
+            label="Avg FAAI (last 3 months)"
+            value={`${Math.round(avgFaai)}%`}
+            sub="Failure rate index"
+            trend={avgFaai >= 95 ? "up" : "down"}
+            valueColor={avgFaai >= 95 ? "var(--fsm-green)" : "var(--fsm-amber)"}
+            icon={<ShieldCheck className="w-4 h-4" />}
+          />
+          <KpiCard
             label="Accumulated Overdue"
             value={String(totalOverdue)}
             sub="Jan/25 – Apr/26"
@@ -144,7 +153,7 @@ export default async function DashboardPage() {
           <KpiCard
             label="FAA Records"
             value={String(totalFaa)}
-            sub="Monitor with tech support"
+            sub="Total failures detected"
             trend="flat"
             valueColor="var(--fsm-amber)"
             icon={<Info className="w-4 h-4" />}

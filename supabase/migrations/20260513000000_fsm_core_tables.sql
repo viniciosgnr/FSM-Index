@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS fsm_snapshots (
   faa                 INTEGER NOT NULL DEFAULT 0,
   ptci                NUMERIC(5,2) NOT NULL DEFAULT 0, -- 0.00–100.00
   mci                 NUMERIC(5,2) NOT NULL DEFAULT 0,
+  faai                NUMERIC(5,2) NOT NULL DEFAULT 0,
   calculated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ingestion_id        UUID REFERENCES fsm_ingestion_logs(id),
   -- enforce uniqueness: one snapshot per region (or fleet) per month

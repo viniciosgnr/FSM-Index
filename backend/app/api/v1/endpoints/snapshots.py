@@ -27,6 +27,7 @@ async def get_fleet(repo=Depends(get_snapshot_repo)):
             "faa": s.faa,
             "ptci": s.ptci,
             "mci": s.mci,
+            "faai": s.faai,
             "referenceMonth": str(s.reference_month)
         }
         for s in snapshots

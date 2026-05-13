@@ -14,4 +14,5 @@ class MonthlySnapshot:
     faa: int
     ptci: float
     mci: float
+    faai: float
     region_code: Optional[str] = None # None for fleet-wide

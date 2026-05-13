@@ -12,8 +12,8 @@ class SupabaseSnapshotRepository(SnapshotRepository):
     async def get_fleet_snapshots(self) -> List[MonthlySnapshot]:
         query = """
             SELECT reference_month, planejadas, executadas_no_prazo, fora_do_prazo, 
-                   overdue, exec_antecipadas, mitigacoes, faa, ptci, mci
-            FROM fsm_snapshots
+                   overdue, exec_antecipadas, mitigacoes, faa, ptci, mci, faai
+            FROM public.fsm_snapshots
             WHERE region_id IS NULL
             ORDER BY reference_month ASC
         """
@@ -21,17 +21,27 @@ class SupabaseSnapshotRepository(SnapshotRepository):
         with self.db.get_cursor() as cur:
             cur.execute(query)
             for row in cur.fetchall():
+                p = row['planejadas']
+                overdue = row['overdue']
+                mitigacoes = row['mitigacoes']
+                faa = row['faa']
+                
+                ptci = round((1 - (overdue + mitigacoes) / p) * 100, 2) if p > 0 else 100.00
+                mci = round((1 - mitigacoes / (overdue + mitigacoes)) * 100, 2) if (overdue + mitigacoes) > 0 else 100.00
+                faai = round((1 - faa / p) * 100, 2) if p > 0 else 100.00
+
                 snapshots.append(MonthlySnapshot(
                     reference_month=YearMonth.from_date(row['reference_month']),
-                    planejadas=row['planejadas'],
+                    planejadas=p,
                     executadas_no_prazo=row['executadas_no_prazo'],
                     fora_do_prazo=row['fora_do_prazo'],
-                    overdue=row['overdue'],
+                    overdue=overdue,
                     exec_antecipadas=row['exec_antecipadas'],
-                    mitigacoes=row['mitigacoes'],
-                    faa=row['faa'],
-                    ptci=float(row['ptci']),
-                    mci=float(row['mci'])
+                    mitigacoes=mitigacoes,
+                    faa=faa,
+                    ptci=float(ptci),
+                    mci=float(mci),
+                    faai=float(faai)
                 ))
         return snapshots
 
@@ -41,7 +51,7 @@ class SupabaseSnapshotRepository(SnapshotRepository):
         
         # Then get all monthly data for all FPSOs
         data_query = """
-            SELECT r.code, m.reference_month, m.pct_no_prazo, m.realizadas, m.planejadas, m.antecipadas
+            SELECT r.code, m.reference_month, m.pct_no_prazo, m.mci, m.faai, m.realizadas, m.planejadas, m.antecipadas
             FROM fsm_fpso_monthly m
             JOIN fsm_regions r ON m.region_id = r.id
             ORDER BY r.code ASC, m.reference_month ASC
@@ -58,6 +68,8 @@ class SupabaseSnapshotRepository(SnapshotRepository):
                 fpso_units[code].append(FpsoMonthlyDetail(
                     reference_month=YearMonth.from_date(row['reference_month']),
                     pct_no_prazo=float(row['pct_no_prazo']) if row['pct_no_prazo'] is not None else None,
+                    mci=float(row['mci']) if row['mci'] is not None else None,
+                    faai=float(row['faai']) if row['faai'] is not None else None,
                     realizadas=row['realizadas'],
                     planejadas=row['planejadas'],
                     antecipadas=row['antecipadas']

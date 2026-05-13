@@ -4,6 +4,13 @@ import { useState } from "react";
 import { ptciColorClass } from "@/lib/mock-data";
 import type { MonthlyRow } from "@/lib/mock-data";
 import { LayoutGrid, Table2 } from "lucide-react";
+import { IndexInfoTooltip } from "./index-info-tooltip";
+import { Sparkline, DetailedTrend } from "./sparkline";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type Props = {
   months: string[];
@@ -67,7 +74,7 @@ const ROWS: {
 ];
 
 function Pct(v: number) {
-  return `${Math.round(v)}%`;
+  return `${v.toFixed(1)}%`;
 }
 
 // ── Intensity heat cell background ────────────────────────────
@@ -113,6 +120,7 @@ export function Panel1Fleet({ months, data }: Props) {
       faa: acc.faa + row.faa,
       ptci: 0,
       mci: 0,
+      faai: 0,
     }),
     {
       planejadas: 0,
@@ -124,11 +132,18 @@ export function Panel1Fleet({ months, data }: Props) {
       faa: 0,
       ptci: 0,
       mci: 0,
+      faai: 0,
     }
   );
 
-  const avgPtci = data.reduce((s, r) => s + r.ptci, 0) / data.length;
-  const avgMci = data.reduce((s, r) => s + r.mci, 0) / data.length;
+  const totalPlanejadas = totals.planejadas;
+  const totalOverdue = totals.overdue;
+  const totalMitigacoes = totals.mitigacoes;
+  const totalFaa = totals.faa;
+
+  const avgPtci = totalPlanejadas > 0 ? (1 - (totalOverdue + totalMitigacoes) / totalPlanejadas) * 100 : 0;
+  const avgMci = (totalOverdue + totalMitigacoes) > 0 ? (1 - totalMitigacoes / (totalOverdue + totalMitigacoes)) * 100 : 100;
+  const avgFaai = totalPlanejadas > 0 ? (1 - totalFaa / totalPlanejadas) * 100 : 100;
 
   // ── Pre-compute row maximums (for heat intensity) ────────────
   const rowMax: Partial<Record<keyof MonthlyRow, number>> = {};
@@ -145,23 +160,23 @@ export function Panel1Fleet({ months, data }: Props) {
           <tr>
             <th
               colSpan={2}
-              className="th-navy px-4 py-2 text-left text-sm font-semibold sticky left-0 z-10 min-w-[220px]"
+              className="th-navy px-3 py-2 text-left text-sm font-semibold sticky left-0 z-10"
             >
               Indicator
             </th>
             <th
               colSpan={12}
-              className="th-navy px-2 py-2 text-center text-xs font-semibold tracking-wider border-l border-white/10"
+              className="th-navy px-1 py-2 text-center text-xs font-semibold tracking-wider border-l border-white/10"
             >
               2025
             </th>
             <th
               colSpan={4}
-              className="th-navy px-2 py-2 text-center text-xs font-semibold tracking-wider border-l border-white/10"
+              className="th-navy px-1 py-2 text-center text-xs font-semibold tracking-wider border-l border-white/10"
             >
               2026
             </th>
-            <th className="th-navy px-3 py-2 text-center text-xs font-semibold min-w-[72px]">
+            <th className="th-navy px-2 py-2 text-center text-xs font-semibold">
               Total/Avg
             </th>
             {/* ── View toggle ─ */}
@@ -210,13 +225,13 @@ export function Panel1Fleet({ months, data }: Props) {
             {months.map((m) => (
               <th
                 key={m}
-                className="th-navy-lt px-1.5 py-1.5 text-center font-medium min-w-[52px] border-l border-white/5"
+                className="th-navy-lt px-1 py-1.5 text-center font-medium border-l border-white/5 whitespace-nowrap"
               >
                 {m}
               </th>
             ))}
-            <th className="th-navy-lt px-3 py-1.5 text-center font-medium" />
-            <th className="th-navy-lt" />
+            <th className="th-navy-lt px-3 py-1.5 text-center font-medium">Total</th>
+            <th className="th-navy-lt text-center font-medium">Trend</th>
           </tr>
         </thead>
 
@@ -234,19 +249,11 @@ export function Panel1Fleet({ months, data }: Props) {
             >
               PANEL 1 — Monthly PTCI &nbsp;·&nbsp; OLF as planning base &nbsp;·&nbsp;
               Early executions are informational only
-              {heatMode && (
-                <span
-                  className="ml-3 px-1.5 py-0.5 rounded text-[0.6rem] font-bold"
-                  style={{ backgroundColor: "#F26522", color: "#fff" }}
-                >
-                  ● HEAT MAP — intensity scales with row maximum
-                </span>
-              )}
             </td>
           </tr>
 
           {/* ── Data rows ─────────────────────────────────────── */}
-          {ROWS.map(({ key, label, badge, dim, rgb, sentiment }) => {
+          {ROWS.map(({ key, label, badge, dim, rgb }) => {
             const max = rowMax[key] ?? 0;
 
             return (
@@ -272,18 +279,11 @@ export function Panel1Fleet({ months, data }: Props) {
                       {badge}
                     </span>
                   )}
-                  {heatMode && max > 0 && (
-                    <span className="ml-2 text-[0.55rem] text-muted-foreground">
-                      max={max}
-                    </span>
-                  )}
                 </td>
 
                 {/* Value cells */}
                 {data.map((row, i) => {
                   const val = row[key] as number;
-
-                  // ── Standard mode colors ──────────────────────
                   let stdColor = "var(--muted-foreground)";
                   if (!heatMode) {
                     if (key === "overdue" && val > 0) stdColor = "var(--fsm-red)";
@@ -294,27 +294,14 @@ export function Panel1Fleet({ months, data }: Props) {
                       stdColor = "var(--fsm-green)";
                   }
 
-                  // ── Heat mode styles ──────────────────────────
                   const bg = heatMode ? heatBg(val, max, rgb) : "transparent";
                   const textColor = heatMode ? heatText(val, max, rgb) : stdColor;
 
                   return (
-                    <td
-                      key={i}
-                      className="border-l border-border/30 p-[3px]"
-                    >
+                    <td key={i} className="border-l border-border/30 p-[3px]">
                       <div
-                        className="flex items-center justify-center rounded h-8 tabular-nums transition-colors"
-                        style={{
-                          backgroundColor: bg,
-                          color: textColor,
-                          fontWeight:
-                            val > 0 &&
-                            key !== "planejadas" &&
-                            key !== "executadasNoPrazo"
-                              ? 600
-                              : 400,
-                        }}
+                        className="flex items-center justify-center rounded h-8 tabular-nums transition-colors text-[0.75rem]"
+                        style={{ backgroundColor: bg, color: textColor }}
                       >
                         {val || "—"}
                       </div>
@@ -326,95 +313,133 @@ export function Panel1Fleet({ months, data }: Props) {
                 <td className="text-center py-1.5 px-3 font-semibold tabular-nums text-muted-foreground border-l border-border">
                   {(totals[key] as number) || "—"}
                 </td>
-                <td />
+                <td className="px-2 text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div className="cursor-pointer hover:opacity-100 transition-opacity flex justify-center py-1 opacity-60">
+                        <Sparkline data={data.map(r => r[key] as number)} color={`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`} />
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 border-none shadow-none bg-transparent" side="left" align="center" sideOffset={10}>
+                      <DetailedTrend data={data.map(r => r[key] as number)} color={`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`} title={`Fleet ${label} Trend`} unit="Fleet" months={months} />
+                    </PopoverContent>
+                  </Popover>
+                </td>
               </tr>
             );
           })}
 
           {/* ── PTCI % ─────────────────────────────────────────── */}
-          <tr
-            className="font-bold"
-            style={{
-              backgroundColor: "rgba(27, 42, 71, 0.04)",
-              borderTop: "3px solid var(--sbm-navy)",
-            }}
-          >
-            <td
-              colSpan={2}
-              className="px-4 py-2 sticky left-0 z-10 text-foreground font-bold text-[0.8rem]"
-              style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}
-            >
-              PTCI %
+          <tr className="font-bold border-t-2 border-slate-200" style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}>
+            <td colSpan={2} className="px-4 py-3 sticky left-0 z-10 text-foreground font-bold text-[0.85rem]" style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}>
+              <IndexInfoTooltip indexKey="PTCI">
+                <span className="cursor-help border-b border-dotted border-muted-foreground/30">PTCI %</span>
+              </IndexInfoTooltip>
             </td>
             {data.map((row, i) => (
               <td key={i} className="border-l border-border/30 p-[3px]">
-                <div className="flex items-center justify-center h-8">
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded text-[0.68rem] ${ptciColorClass(row.ptci)}`}
-                  >
+                <div className="flex items-center justify-center h-10">
+                  <span className={`inline-block px-2.5 py-1 rounded text-[0.75rem] font-black ${ptciColorClass(row.ptci)}`}>
                     {Pct(row.ptci)}
                   </span>
                 </div>
               </td>
             ))}
             <td className="text-center py-2 px-3 border-l border-border">
-              <span
-                className={`inline-block px-2 py-0.5 rounded text-[0.68rem] ${ptciColorClass(avgPtci)}`}
-              >
+              <span className={`inline-block px-2.5 py-1 rounded text-[0.75rem] font-black ${ptciColorClass(avgPtci)}`}>
                 {Pct(avgPtci)}
               </span>
             </td>
-            <td />
+            <td className="px-2 text-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="cursor-pointer hover:opacity-80 transition-opacity flex justify-center py-1">
+                    <Sparkline data={data.map(r => r.ptci)} color="#10b981" />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 border-none shadow-none bg-transparent" side="left" align="center" sideOffset={10}>
+                  <DetailedTrend data={data.map(r => r.ptci)} color="#10b981" title="Fleet PTCI Trend" unit="Fleet" months={months} />
+                </PopoverContent>
+              </Popover>
+            </td>
           </tr>
 
           {/* ── MCI % ──────────────────────────────────────────── */}
-          <tr
-            className="font-bold"
-            style={{
-              backgroundColor: "rgba(27, 42, 71, 0.04)",
-              borderBottom: "3px solid var(--sbm-navy)",
-            }}
-          >
-            <td
-              colSpan={2}
-              className="px-4 py-2 sticky left-0 z-10 text-foreground font-bold text-[0.8rem]"
-              style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}
-            >
-              MCI %
+          <tr className="font-bold" style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}>
+            <td colSpan={2} className="px-4 py-3 sticky left-0 z-10 text-foreground font-bold text-[0.85rem]" style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}>
+              <IndexInfoTooltip indexKey="MCI">
+                <span className="cursor-help border-b border-dotted border-muted-foreground/30">MCI %</span>
+              </IndexInfoTooltip>
             </td>
             {data.map((row, i) => (
               <td key={i} className="border-l border-border/30 p-[3px]">
-                <div className="flex items-center justify-center h-8">
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded text-[0.68rem] ${ptciColorClass(row.mci)}`}
-                  >
+                <div className="flex items-center justify-center h-10">
+                  <span className={`inline-block px-2.5 py-1 rounded text-[0.75rem] font-black ${ptciColorClass(row.mci)}`}>
                     {Pct(row.mci)}
                   </span>
                 </div>
               </td>
             ))}
             <td className="text-center py-2 px-3 border-l border-border">
-              <span
-                className={`inline-block px-2 py-0.5 rounded text-[0.68rem] ${ptciColorClass(avgMci)}`}
-              >
+              <span className={`inline-block px-2.5 py-1 rounded text-[0.75rem] font-black ${ptciColorClass(avgMci)}`}>
                 {Pct(avgMci)}
               </span>
             </td>
-            <td />
+            <td className="px-2 text-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="cursor-pointer hover:opacity-80 transition-opacity flex justify-center py-1">
+                    <Sparkline data={data.map(r => r.mci)} color="#f59e0b" />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 border-none shadow-none bg-transparent" side="left" align="center" sideOffset={10}>
+                  <DetailedTrend data={data.map(r => r.mci)} color="#f59e0b" title="Fleet MCI Trend" unit="Fleet" months={months} />
+                </PopoverContent>
+              </Popover>
+            </td>
           </tr>
 
-          {/* ── Heat map legend (only in heat mode) ─────────────── */}
+          {/* ── FAAI % ─────────────────────────────────────────── */}
+          <tr className="font-bold border-b-2 border-slate-200" style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}>
+            <td colSpan={2} className="px-4 py-3 sticky left-0 z-10 text-foreground font-bold text-[0.85rem]" style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}>
+              <IndexInfoTooltip indexKey="FAAI">
+                <span className="cursor-help border-b border-dotted border-muted-foreground/30">FAAI %</span>
+              </IndexInfoTooltip>
+            </td>
+            {data.map((row, i) => (
+              <td key={i} className="border-l border-border/30 p-[3px]">
+                <div className="flex items-center justify-center h-10">
+                  <span className={`inline-block px-2.5 py-1 rounded text-[0.75rem] font-black ${ptciColorClass(row.faai)}`}>
+                    {Pct(row.faai)}
+                  </span>
+                </div>
+              </td>
+            ))}
+            <td className="text-center py-2 px-3 border-l border-border">
+              <span className={`inline-block px-2.5 py-1 rounded text-[0.75rem] font-black ${ptciColorClass(avgFaai)}`}>
+                {Pct(avgFaai)}
+              </span>
+            </td>
+            <td className="px-2 text-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="cursor-pointer hover:opacity-80 transition-opacity flex justify-center py-1">
+                    <Sparkline data={data.map(r => r.faai)} color="#ef4444" />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 border-none shadow-none bg-transparent" side="left" align="center" sideOffset={10}>
+                  <DetailedTrend data={data.map(r => r.faai)} color="#ef4444" title="Fleet FAAI Trend" unit="Fleet" months={months} />
+                </PopoverContent>
+              </Popover>
+            </td>
+          </tr>
+
+          {/* ── Heat map legend ────────────────────────────────── */}
           {heatMode && (
             <tr>
-              <td
-                colSpan={months.length + 4}
-                className="px-4 py-3 border-t border-border"
-                style={{ backgroundColor: "#FAFBFD" }}
-              >
+              <td colSpan={months.length + 4} className="px-4 py-3 border-t border-border" style={{ backgroundColor: "#FAFBFD" }}>
                 <div className="flex flex-wrap items-center gap-6 text-[0.65rem] text-muted-foreground">
-                  <span className="font-semibold text-foreground">
-                    Intensity legend:
-                  </span>
+                  <span className="font-semibold text-foreground">Intensity legend:</span>
                   {[
                     { label: "Planned", rgb: [27, 42, 71] },
                     { label: "Executed on time", rgb: [30, 138, 76] },
@@ -427,22 +452,12 @@ export function Panel1Fleet({ months, data }: Props) {
                     <div key={label} className="flex items-center gap-1.5">
                       <div className="flex gap-0.5">
                         {[0.1, 0.3, 0.55, 0.8].map((a) => (
-                          <span
-                            key={a}
-                            className="w-3.5 h-3.5 rounded-sm"
-                            style={{
-                              backgroundColor: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`,
-                              border: "1px solid rgba(0,0,0,0.06)",
-                            }}
-                          />
+                          <span key={a} className="w-3.5 h-3.5 rounded-sm" style={{ backgroundColor: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`, border: "1px solid rgba(0,0,0,0.06)" }} />
                         ))}
                       </div>
                       <span>{label}</span>
                     </div>
                   ))}
-                  <span className="ml-auto italic">
-                    Cell opacity scales from low (lightest) → high (darkest) relative to row maximum
-                  </span>
                 </div>
               </td>
             </tr>

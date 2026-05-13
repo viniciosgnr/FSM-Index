@@ -78,10 +78,10 @@ PTCI (%) = [1 - (WO not executed proof tests / Total WO proof tests)] × 100
 
 Where:
 - **Total WO proof tests** = Work Orders with `ORIGINAL_LATEST_FINISH` within the reference month (*"Planejadas (OLF no mês)"*)
-- **WO not executed proof tests** = `Overdue + FAA`
+- **WO not executed proof tests** = `Overdue + Mitigações`
 
-> ⚠️ **Mitigation WOs are excluded from Overdue** — they do not penalize the PTCI.
-> ⚠️ **Anticipated executions** (Exec. antecipadas) are **informational only** — they do NOT count toward the current month's PTCI.
+> ⚠️ **Critical Change**: Mitigations now **penalize** the PTCI (contrary to previous assumptions).
+> ⚠️ **FAA (Failure Assurance Activity)**: Does **NOT** penalize PTCI (it is considered a "carried out" test).
 
 #### 2.1.2 MCI — Mitigation Compliance Index
 
@@ -93,7 +93,15 @@ MCI (%) = [1 - (Number of mitigations / WO not executed proof tests)] × 100
 
 Where:
 - **Number of mitigations** = WOs formally postponed via Change Request (CR) or Risk Analysis (ORA)
-- **WO not executed proof tests** = `Overdue + FAA` (same denominator as PTCI)
+- **WO not executed proof tests** = `Overdue + Mitigações` (same denominator as PTCI penalty part)
+
+#### 2.1.3 FAAI — Failure Assurance Activity Index
+
+Measures the rate of functional failure events detected during proof testing.
+
+```
+FAAI (%) = [1 - (Number of FAA / Total WO proof tests)] × 100
+```
 
 ---
 
@@ -103,13 +111,13 @@ Each SIF Work Order is classified into **one of the following categories** per r
 
 | Category | Portuguese Label | Definition | IFS Parameters |
 |----------|-----------------|------------|----------------|
-| **Planned** | Planejadas (OLF no mês) | WOs with `ORIGINAL_LATEST_FINISH` within the reference month | `ORIGINAL_LATEST_FINISH` ∈ [start_of_month, end_of_month] |
-| **Executed on time** | Executadas no prazo | Planned WOs completed within the reference month | STATUS ∈ {`WORK DONE`, `FINISH`, `REPORTED`} AND completion date ≤ end_of_month |
-| **Executed late** | Fora do prazo | WOs executed but after the reference month deadline | STATUS ∈ {`WORK DONE`, `FINISH`, `REPORTED`} AND completion date > end_of_month |
-| **Overdue** | Overdue | Planned WOs not executed and not formally mitigated | `ORIGINAL_LATEST_FINISH` ∈ month AND STATUS ∉ done states AND `IS_POSTPONED` = FALSE |
-| **Anticipated** | Exec. antecipadas (+info) | WOs with OLF in a **future** month, but executed early in the current month | STATUS ∈ done states AND `ORIGINAL_LATEST_FINISH` > end_of_month |
-| **Mitigation** | Mitigações | WOs formally postponed via CR or ORA | `LATEST_FINISH` ≠ `ORIGINAL_LATEST_FINISH` OR `IS_POSTPONED` = TRUE |
-| **FAA** | FAA | WOs where a test was performed but a functional failure was detected | FAA record linked to the WO (auto-opened via checklist on failure) |
+| **Planned** | Planejadas | WOs with OLF within the reference month | `OLF` ∈ [start_of_month, end_of_month] |
+| **Executed on time** | Exec. prazo | Planned WOs completed within the reference month | STATUS done AND completion date ≤ end_of_month |
+| **Executed late** | Fora prazo | WOs executed after the reference month deadline | STATUS done AND completion date > end_of_month |
+| **Overdue** | Overdue | Planned WOs not executed and not formally mitigated | OLF ∈ month AND Not Done AND `IS_POSTPONED` = FALSE |
+| **Anticipated** | Exec. antecipadas | OLF in future, but executed early | STATUS done AND `OLF` > end_of_month |
+| **Mitigation** | Mitigações | WOs formally postponed via CR or ORA | `LATEST_FINISH` ≠ `OLF` OR `IS_POSTPONED` = TRUE |
+| **FAA** | FAA | WOs where a test was performed but failure detected | FAA record linked to the WO |
 
 **STATUS values that confirm test completion**: `WORK DONE`, `FINISH`, `REPORTED`
 
@@ -118,12 +126,10 @@ Each SIF Work Order is classified into **one of the following categories** per r
 ### 2.3 FAA (Functional Failure Action) Rules
 
 - All SIF Work Orders should be classified as **P1 - AA** (Priority 1 - Automatic Action)
-- When a proof test is performed and **fails**, the technician fills a checklist
-- Upon reporting the failure in the checklist, an **FAA is automatically opened** in IFS
-- The original WO that was closed with a failure report **does NOT count as Overdue** — it becomes an FAA
+- When a proof test is performed and **fails**, an **FAA is automatically opened** in IFS
+- The original WO that triggered a FAA **does NOT count as Overdue** for PTCI — it is treated as "Executed" for compliance purposes, but tracked separately.
 - FAA WOs must be monitored separately and reported to the Technical Support team
-- FAA does NOT penalize the Overdue count, but IS included in "WO not executed proof tests" for PTCI/MCI calculation
-- **FAA and Mitigation are mutually exclusive**: a WO that triggered a FAA (test attempted but failed) cannot simultaneously be a Mitigation (test formally postponed without attempt). They represent opposite outcomes.
+- FAA IS included in "total proof tests" for FAAI calculation.
 
 ---
 
@@ -175,13 +181,14 @@ The primary dashboard view is a **monthly time series** table for the whole flee
 |-----|-----------------|-------------|-------------|
 | Planejadas (OLF no mês) | Planejadas | Base denominator | WOs with OLF within the reference month |
 | Executadas no prazo | Executadas no prazo | ✅ Positive | STATUS done AND `ACTUAL_FINISH` ≤ end of month |
-| Fora do prazo | Fora do prazo | ℹ️ Informational only | STATUS done AND `ACTUAL_FINISH` > end of month — **does NOT impact PTCI** |
-| Overdue | Overdue | ❌ Penalizes PTCI | Planned, not done, not mitigated |
-| Exec. antecipadas (+info) | Exec. antecipadas (+info) | ℹ️ Informational only | Executed in current month but OLF is in a future month — **does NOT count toward current month's PTCI** |
-| Mitigações | Mitigações | ⚠️ Affects MCI only | Formally postponed via CR or ORA |
-| FAA | FAA | ❌ Penalizes PTCI | Test performed but failure detected |
-| **PTCI %** | PTCI % | — | `[1 - (Overdue + FAA) / Planejadas] × 100` |
-| **MCI %** | MCI % | — | `[1 - (Mitigações / (Overdue + FAA))] × 100` |
+| Fora do prazo | Fora do prazo | ✅ Positive (Exec) | STATUS done AND `ACTUAL_FINISH` > end of month |
+| Overdue | Overdue | ❌ Penalty | Planned, not done, not mitigated |
+| Exec. antecipadas (+info) | Exec. antecipadas (+info) | ℹ️ Info | OLF is in a future month |
+| Mitigações | Mitigações | ❌ Penalty (PTCI) | Formally postponed via CR or ORA |
+| FAA | FAA | ✅ Positive (PTCI) | Test performed but failure detected |
+| **PTCI %** | PTCI % | — | `[1 - (Overdue + Mitigações) / Planejadas] × 100` |
+| **MCI %** | MCI % | — | `[1 - (Mitigações / (Overdue + Mitigações))] × 100` |
+| **FAAI %** | FAAI % | — | `[1 - (FAA / Planejadas)] × 100` |
 
 **Color coding rules**:
 - 🟢 Green: PTCI ≥ 95%
