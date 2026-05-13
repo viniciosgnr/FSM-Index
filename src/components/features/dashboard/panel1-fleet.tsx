@@ -333,12 +333,16 @@ export function Panel1Fleet({ months, data }: Props) {
 
           {/* ── PTCI % ─────────────────────────────────────────── */}
           <tr
-            className="border-t-2 font-bold"
-            style={{ borderTopColor: "var(--sbm-navy)" }}
+            className="font-bold"
+            style={{
+              backgroundColor: "rgba(27, 42, 71, 0.04)",
+              borderTop: "3px solid var(--sbm-navy)",
+            }}
           >
             <td
               colSpan={2}
-              className="px-4 py-2 sticky left-0 z-10 bg-card text-foreground font-bold text-[0.8rem]"
+              className="px-4 py-2 sticky left-0 z-10 text-foreground font-bold text-[0.8rem]"
+              style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}
             >
               PTCI %
             </td>
@@ -364,10 +368,17 @@ export function Panel1Fleet({ months, data }: Props) {
           </tr>
 
           {/* ── MCI % ──────────────────────────────────────────── */}
-          <tr className="border-b border-border font-bold">
+          <tr
+            className="font-bold"
+            style={{
+              backgroundColor: "rgba(27, 42, 71, 0.04)",
+              borderBottom: "3px solid var(--sbm-navy)",
+            }}
+          >
             <td
               colSpan={2}
-              className="px-4 py-2 sticky left-0 z-10 bg-card text-foreground font-bold text-[0.8rem]"
+              className="px-4 py-2 sticky left-0 z-10 text-foreground font-bold text-[0.8rem]"
+              style={{ backgroundColor: "rgba(27, 42, 71, 0.04)" }}
             >
               MCI %
             </td>

@@ -23,39 +23,70 @@ export function FpsoRanking({ units }: Props) {
   stats.sort((a, b) => a.avgPtci - b.avgPtci);
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-sm p-5 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+    <div className="bg-card border border-border rounded-lg shadow-sm p-6 pt-8">
+      <div className="flex items-end justify-between h-64 gap-2 w-full">
         {stats.map((stat, i) => {
           let color = "var(--fsm-red)";
-          let bgClass = "bg-red-100";
           if (stat.avgPtci >= 95) {
             color = "var(--fsm-green)";
-            bgClass = "bg-emerald-100";
           } else if (stat.avgPtci >= 80) {
             color = "var(--fsm-amber)";
-            bgClass = "bg-amber-100";
           }
 
+          // Force minimum height so even 0% is slightly visible, but scale the rest to 100% of the container height
+          // Since max PTCI is 100, we can map 0-100 to 0-100% height.
+          const heightPct = Math.max(0, Math.min(100, stat.avgPtci));
+
           return (
-            <div key={stat.code} className="flex flex-col gap-1.5">
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-foreground">
-                  {i + 1}. {stat.code}
-                </span>
-                <span style={{ color }}>{Math.round(stat.avgPtci)}%</span>
+            <div
+              key={stat.code}
+              className="flex flex-col items-center justify-end w-full h-full group relative"
+            >
+              {/* Value label - always visible above the bar */}
+              <span
+                className="text-sm font-bold mb-2 tabular-nums transition-transform duration-300 group-hover:-translate-y-1"
+                style={{ color }}
+              >
+                {Math.round(stat.avgPtci)}%
+              </span>
+              
+              {/* Vertical Bar */}
+              <div
+                className="w-full max-w-[60px] rounded-t-md transition-all duration-1000 ease-out flex items-end justify-center pb-2"
+                style={{
+                  height: `${heightPct}%`,
+                  backgroundColor: color,
+                  opacity: 0.85,
+                }}
+              >
+                {/* Ranking number inside the bottom of the bar */}
+                {heightPct > 15 && (
+                  <span className="text-white/80 font-bold text-xs">#{i + 1}</span>
+                )}
               </div>
-              <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-1000 ease-out"
-                  style={{
-                    width: `${Math.max(0, Math.min(100, stat.avgPtci))}%`,
-                    backgroundColor: color,
-                  }}
-                />
-              </div>
+              
+              {/* FPSO Code Label */}
+              <span className="text-xs font-semibold mt-3 text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
+                {stat.code}
+              </span>
             </div>
           );
         })}
+      </div>
+      <div className="mt-6 flex items-center justify-center gap-6 border-t border-border pt-4 text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground">Performance Legend:</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "var(--fsm-green)" }} />
+          <span>Optimal (≥ 95%)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "var(--fsm-amber)" }} />
+          <span>Warning (80–94%)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "var(--fsm-red)" }} />
+          <span>Critical (&lt; 80%)</span>
+        </div>
       </div>
     </div>
   );

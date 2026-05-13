@@ -1,11 +1,8 @@
 import { Panel1Fleet } from "@/components/features/dashboard/panel1-fleet";
 import { Panel2Fpso } from "@/components/features/dashboard/panel2-fpso";
 import { PtciHeatmap } from "@/components/features/dashboard/ptci-heatmap";
-import { FpsoGauges } from "@/components/features/dashboard/fpso-gauges";
-import { FpsoRanking } from "@/components/features/dashboard/fpso-ranking";
-import { CriticalMonths } from "@/components/features/dashboard/critical-months";
 import { fleetData, fpsoData, MONTHS } from "@/lib/mock-data";
-import { Info, TrendingDown, TrendingUp, Minus, RefreshCw, ShieldCheck, Activity, Target } from "lucide-react";
+import { Info, TrendingDown, TrendingUp, Minus, RefreshCw, ShieldCheck } from "lucide-react";
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
 function KpiCard({
@@ -150,46 +147,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* ── Action Items (Critical Months Drill-down) ────────── */}
-        <section className="space-y-3">
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-base font-bold text-foreground">
-              Action Required — Critical Months
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              Drill-down into months below the 80% PTCI target
-            </span>
-          </div>
-          <CriticalMonths />
-        </section>
 
-        {/* ── FPSO Performance Overview ────────────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-          {/* Gauges */}
-          <section className="xl:col-span-12 space-y-3">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-base font-bold text-foreground">
-                Current Health — Latest Month (Apr/26)
-              </h2>
-            </div>
-            <FpsoGauges units={fpsoData} />
-          </section>
-
-          {/* Ranking */}
-          <section className="xl:col-span-12 space-y-3">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-base font-bold text-foreground">
-                Fleet Ranking — Average PTCI
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                Sorted from worst to best performance across all months
-              </span>
-            </div>
-            <FpsoRanking units={fpsoData} />
-          </section>
-        </div>
-
-        <hr className="border-border my-2" />
 
         {/* ── Color legend ───────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground bg-card border border-border rounded-lg px-4 py-3">

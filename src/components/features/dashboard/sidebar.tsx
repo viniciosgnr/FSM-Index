@@ -12,6 +12,7 @@ import {
   FileUp,
   AlertTriangle,
   ChevronRight,
+  Activity,
 } from "lucide-react";
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
     group: "Main",
     items: [
       { href: "/dashboard",        label: "Dashboard",   icon: LayoutDashboard },
+      { href: "/dashboard/analytics", label: "Analytics", icon: Activity },
       { href: "/dashboard/fpsos",  label: "By FPSO",     icon: Ship },
       { href: "/dashboard/trends", label: "Trends",      icon: BarChart3 },
     ],
