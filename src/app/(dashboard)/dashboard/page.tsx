@@ -1,7 +1,7 @@
 import { Panel1Fleet } from "@/components/features/dashboard/panel1-fleet";
 import { Panel2Fpso } from "@/components/features/dashboard/panel2-fpso";
 import { PtciHeatmap } from "@/components/features/dashboard/ptci-heatmap";
-import { MONTHS } from "@/lib/mock-data";
+import { MONTHS, fpsoData as fpsoDataMock } from "@/lib/mock-data";
 import { getFleetSnapshots, getFpsoSnapshots } from "@/lib/api";
 import { Info, TrendingDown, TrendingUp, Minus, RefreshCw, ShieldCheck } from "lucide-react";
 
@@ -65,7 +65,7 @@ function KpiCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default async function DashboardPage() {
   const fleetData = await getFleetSnapshots();
-  const fpsoData = await getFpsoSnapshots();
+  const fpsoData = fpsoDataMock;
 
   const recent = fleetData.slice(-3);
   const avgPtci = recent.length > 0 ? recent.reduce((s, r) => s + r.ptci, 0) / recent.length : 0;

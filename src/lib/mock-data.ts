@@ -77,123 +77,86 @@ export type FpsoUnit = {
     faai: number | null;
     realizadas: number; // Total realized (on-time + late)
     noPrazo: number;    // Realized on-time
-    planejadas: number;
-    overdue: number;
-    mitigacoes: number;
-    faa: number;
   }>;
 };
 
-function calculateFpsoMonth(m: any) {
-  const p = m.planejadas || 0;
-  if (p === 0 && (m.realizadas || 0) === 0) return { ...m, pctNoPrazo: null, mci: null, faai: null };
-  
-  const overdue = m.overdue || 0;
-  const mitigacoes = m.mitigacoes || 0;
-  const faa = m.faa || 0;
-  const realizadas = m.realizadas || 0;
-  const noPrazo = m.noPrazo || realizadas; // default to all on time if not specified
-
-  const ptci = p > 0 ? (1 - (overdue + mitigacoes) / p) * 100 : 100;
-  const denomMci = overdue + mitigacoes;
-  const mci = denomMci > 0 ? (1 - mitigacoes / denomMci) * 100 : 100;
-  const faai = p > 0 ? (1 - faa / p) * 100 : 100;
-
+function pM(pct: number | null, str: string) {
+  if (!str) return { pctNoPrazo: null, mci: null, faai: null, realizadas: 0, noPrazo: 0 };
+  const frac = str.split(' ')[0];
+  const [realizadas, noPrazo] = frac.split('/').map(Number);
   return {
-    ...m,
+    pctNoPrazo: pct,
     realizadas,
     noPrazo,
-    pctNoPrazo: Number(ptci.toFixed(1)),
-    mci: Number(mci.toFixed(1)),
-    faai: Number(faai.toFixed(1)),
+    mci: pct !== null ? Math.min(100, pct + 10) : null,
+    faai: pct !== null ? Math.min(100, pct + 5) : null,
   };
 }
 
 export const fpsoData: FpsoUnit[] = [
   {
     code: "CDA",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: i === 9 ? 1 : i === 12 ? 2 : 0, planejadas: i === 9 ? 1 : i === 12 ? 2 : 0, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 })
-    ),
+    months: [
+      pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""),
+      pM(100, "1/1"), pM(null, ""), pM(null, ""), pM(100, "2/2"), pM(null, ""), pM(null, ""), pM(null, "")
+    ],
   },
   {
     code: "CDI",
     months: [
-      calculateFpsoMonth({ realizadas: 5, planejadas: 6, antecipadas: -1, overdue: 1, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 8, planejadas: 8, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 2, planejadas: 2, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 2, planejadas: 2, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 7, planejadas: 7, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 1, planejadas: 3, antecipadas: -2, overdue: 2, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 4, planejadas: 5, antecipadas: -1, overdue: 1, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 16, planejadas: 16, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 7, planejadas: 10, antecipadas: -3, overdue: 3, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 21, planejadas: 32, antecipadas: -11, overdue: 11, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 10, planejadas: 10, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 11, planejadas: 21, antecipadas: 0, overdue: 10, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 5, planejadas: 5, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 3, planejadas: 3, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 2, planejadas: 3, antecipadas: 0, overdue: 1, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 2, planejadas: 2, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
+      pM(83, "6/5 (-1)"), pM(100, "8/8"), pM(100, "2/2"), pM(100, "2/2"), pM(100, "7/7"), pM(33, "3/1 (-2)"), pM(80, "5/4 (-1)"), pM(100, "16/16"),
+      pM(70, "10/7 (-3)"), pM(66, "32/21 (-11)"), pM(48, "21/10 (-11)"), pM(100, "5/5"), pM(100, "3/3"), pM(100, "13/13"), pM(67, "3/2 (-1)"), pM(100, "2/2")
     ],
   },
   {
     code: "CDS",
     months: [
-      calculateFpsoMonth({ realizadas: 10, planejadas: 13, antecipadas: -3, overdue: 3, mitigacoes: 0, faa: 1 }),
-      calculateFpsoMonth({ realizadas: 3, planejadas: 3, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 5, planejadas: 6, antecipadas: -1, overdue: 1, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 2, planejadas: 2, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 3, planejadas: 3, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 20, planejadas: 21, antecipadas: -1, overdue: 1, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 23, planejadas: 23, antecipadas: -20, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 7, planejadas: 7, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 8, planejadas: 8, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 10, planejadas: 10, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 8, planejadas: 8, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 1, planejadas: 1, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 6, planejadas: 6, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 5, planejadas: 5, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 3, planejadas: 3, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 }),
-      calculateFpsoMonth({ realizadas: 0, planejadas: 0, antecipadas: 0 }),
+      pM(77, "13/10 (-3)"), pM(100, "3/3"), pM(83, "6/5 (-1)"), pM(100, "2/2"), pM(100, "3/3"), pM(95, "21/20 (-1)"), pM(13, "23/3 (-20)"), pM(100, "7/7"),
+      pM(100, "8/8"), pM(100, "10/10"), pM(100, "8/8"), pM(100, "1/1"), pM(100, "6/6"), pM(100, "5/5"), pM(100, "3/3"), pM(null, "")
     ],
   },
   {
     code: "CDM",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: i === 11 ? 6 : 10, planejadas: i === 11 ? 7 : 10, antecipadas: i === 11 ? -1 : 0, overdue: i === 11 ? 1 : 0, mitigacoes: 0, faa: 0 })
-    ),
+    months: [
+      pM(100, "37/37"), pM(100, "15/15"), pM(100, "4/4"), pM(100, "4/4"), pM(100, "8/8"), pM(100, "5/5"), pM(100, "4/4"), pM(100, "15/15"),
+      pM(100, "3/3"), pM(100, "13/13"), pM(100, "11/11"), pM(86, "7/6 (-1)"), pM(19, "32/6 (-26)"), pM(100, "12/12"), pM(null, ""), pM(100, "6/6")
+    ],
   },
   {
     code: "CDP",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: 10, planejadas: 10, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 })
-    ),
+    months: [
+      pM(100, "3/3"), pM(0, "1/0 (-1)"), pM(10, "20/2 (-18)"), pM(67, "3/2 (-1)"), pM(100, "1/1"), pM(67, "3/2 (-1)"), pM(100, "5/5"), pM(100, "4/4"),
+      pM(100, "1/1"), pM(88, "8/7 (-1)"), pM(91, "11/10 (-1)"), pM(90, "10/9 (-1)"), pM(100, "17/17"), pM(95, "21/20 (-1)"), pM(100, "10/10"), pM(100, "10/10")
+    ],
   },
   {
     code: "ADG",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: 0, planejadas: 0, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 })
-    ),
+    months: [
+      pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""),
+      pM(0, "1/0 (-1)"), pM(30, "10/3 (-7)"), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, "")
+    ],
   },
   {
     code: "SEP",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: 30, planejadas: 30, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 })
-    ),
+    months: [
+      pM(90, "31/28 (-3)"), pM(92, "37/34 (-3)"), pM(100, "34/34"), pM(100, "35/35"), pM(100, "50/50"), pM(100, "23/23"), pM(100, "42/42"), pM(94, "18/17 (-1)"),
+      pM(91, "23/21 (-2)"), pM(93, "30/28 (-2)"), pM(91, "57/52 (-5)"), pM(99, "115/114 (-1)"), pM(89, "47/42 (-5)"), pM(100, "24/24"), pM(98, "58/57 (-1)"), pM(100, "28/28")
+    ],
   },
   {
     code: "ATD",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: 0, planejadas: 0, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 })
-    ),
+    months: [
+      pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(null, ""), pM(0, "2/0 (-2)"), pM(null, ""),
+      pM(null, ""), pM(null, ""), pM(100, "1/1"), pM(100, "1/1"), pM(0, "1/0 (-1)"), pM(100, "1/1"), pM(100, "1/1")
+    ],
   },
   {
     code: "ESS",
-    months: Array(16).fill(null).map((_, i) => 
-      calculateFpsoMonth({ realizadas: 0, planejadas: 0, antecipadas: 0, overdue: 0, mitigacoes: 0, faa: 0 })
-    ),
-  },
+    months: [
+      pM(null, ""), pM(0, "1/0 (-1)"), pM(100, "1/1"), pM(100, "1/1"), pM(null, ""), pM(100, "3/3"), pM(null, ""), pM(0, "1/0 (-1)"),
+      pM(0, "1/0 (-1)"), pM(100, "2/2"), pM(null, ""), pM(100, "1/1"), pM(null, ""), pM(100, "1/1"), pM(100, "2/2"), pM(null, "")
+    ],
+  }
 ];
 
 export function ptciColorClass(ptci: number): string {

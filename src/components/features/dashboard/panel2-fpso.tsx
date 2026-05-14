@@ -206,7 +206,7 @@ export function Panel2Fpso({ months, units }: Props) {
                         ui % 2 === 0 ? "bg-white" : "bg-muted/10"
                       }`}
                     >
-                      {unit.code} — realized / planned
+                      {unit.code} - realized / on time
                     </td>
                     {unit.months.map((m, mi) => {
                       const noPrazo = m.noPrazo || 0;
